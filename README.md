@@ -1,5 +1,9 @@
 ## Hi there 👋
 
+This is the start of my data science journey! I have just completed and uploaded my capstone project doing a data analysis for Bellabeat. 
+
+Thanks for stopping by!
+
 <!--
 **eprior-22/eprior-22** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
