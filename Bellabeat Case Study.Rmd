@@ -1,0 +1,329 @@
+---
+title: "Bellabeat Case Study"
+author: "Emily Prior"
+date: "2025-04-03"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+The following case study is the final capstone project to finish out the google Data Analytics Certificate. 
+
+## The scenario
+
+I am a junior data analyst working on the marketing analyst team at Bellabeat, a high-tech manufacturer of health-focused products for women. I have been asked to focus on one of Bellabeat’s products and analyze smart device data to gain insight into how consumers are using their smart devices. The insights I discover will then help guide marketing strategy for the company. I will present my analysis to the Bellabeat executive team along with my high-level recommendations for Bellabeat’s marketing strategy.
+
+**Characters and products**
+
+Characters:
+
+- Urška Sršen: Bellabeat’s cofounder and Chief Creative Officer
+
+- Sando Mur: Mathematician and Bellabeat’s cofounder; key member of the Bellabeat executive team
+
+- Bellabeat marketing analytics team: A team of data analysts responsible for collecting, analyzing, and reporting data that helps guide Bellabeat’s marketing strategy. 
+
+Products:
+
+- Bellabeat app: The Bellabeat app provides users with health data related to their activity, sleep, stress, menstrual cycle, and mindfulness habits. This data can help users better understand their current habits and make healthy decisions. The Bellabeat app connects to their line of smart wellness products.
+
+- Leaf: Bellabeat’s classic wellness tracker can be worn as a bracelet, necklace, or clip. The Leaf tracker connects to the Bellabeat app to track activity, sleep, and stress.
+
+- Time: This wellness watch combines the timeless look of a classic timepiece with smart technology to track user activity, sleep, and stress. The Time watch connects to the Bellabeat app to provide you with insights into your daily wellness.
+
+- Spring: This is a water bottle that tracks daily water intake using smart technology to ensure that you are appropriately hydrated throughout the day. The Spring bottle connects to the Bellabeat app to track your hydration levels.
+
+- Bellabeat membership: Bellabeat also offers a subscription-based membership program for users. Membership gives users 24/7 access to fully personalized guidance on nutrition, activity, sleep, health and beauty, and mindfulness based on their lifestyle and goals.
+
+
+## ASK Phase
+
+Business Task: Identify trends on how consumers use non-Bellabeat smart devices to provide insights for Bellabeat’s marketing strategy, focusing on a single Bellabeat product. 
+
+Key Stakeholders: 
+Urška Sršen - Bellabeat’s cofounder and Chief Creative Officer
+Sando Mur - Bellabeat’s cofounder; key member of the Bellabeat executive team
+Bellabeat marketing analytics team
+
+
+## PREPARE Phase
+
+Dataset used: The dataset used is FitBit Fitness Tracker Data provided by Mobius on Kaggle. Thirty eligible Fitbit users consented to the submission of personal tracker data, including minute-level output for physical activity, heart rate, and sleep monitoring. It includes information about daily activity, steps, and heart rate that can be used to explore users’ habits
+
+The dataset has 18 CSV documents available for analysis. They are all long form and each has unique quantitative data provided by FitBit. Each user has a unique ID. 
+
+This is a limited dataset (30 users) with no demographic information so there is possibility to encounter sampling bias as we can not be sure if the sample is representative of a population. The data also only covers a two month period in 2016 so it is not current.
+
+
+## PROCESS Phase
+
+My analysis will be done in R for ease of sharing and viewing the data and data visuals. 
+
+Setting up my environment: I chose to install and load multiple R packages that will help in my analysis and build my presentation. 
+
+
+```{r}
+#Install and load packages 
+install.packages("tidyverse")
+install.packages("dplyr")
+install.packages("skimr")
+install.packages("readr")
+install.packages("here")
+install.packages("janitor")
+install.packages("readr")
+install.packages("tidyr")
+
+```
+
+```{r}
+#Load Libraries
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(janitor)
+library(skimr)
+library(here)
+library(readr)
+library(scales)
+```
+
+I loaded each CSV and checked for errors and duplicates in the data. Using skimr I can see brief overviews of what each dataset contains. 
+
+```{r}
+#load each file
+Activity <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+Calories <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/dailyCalories_merged.csv")
+daily_steps <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/dailySteps_merged.csv")
+Intensities <- read.csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/dailyIntensities_merged.csv")
+hourly_steps <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/hourlySteps_merged.csv")
+Sleep <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+weight <- read.csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/weightLogInfo_merged.csv")
+
+#example of one skimr and view
+skimr::skim_without_charts(weight)
+```
+
+In viewing each CSV, I was able to conclude that the user ID was the unique value shared amongst each dataset. I then checked if each dataset had data for all the same users. 
+
+```{r}
+#load distinct number of users for each dataset
+n_distinct(Activity$Id)
+n_distinct(Calories$Id)
+n_distinct(daily_steps$Id)
+n_distinct(Intensities$Id)
+n_distinct(hourly_steps$Id)
+n_distinct(Sleep$Id)
+n_distinct(weight$Id)
+```
+
+
+
+I found that weightLogInfo_merged and sleepDay_merged were missing inputs from some users, 8 and 24 respectively. I chose to not work with the weight dataset as the sample size was too small.  
+
+```{r}
+#remove weight from my loaded datasets
+rm(weight)
+```
+
+
+Now to check if there are any duplicates within my data.
+
+```{r}
+sum(duplicated(Activity))
+sum(duplicated(Calories))
+sum(duplicated(daily_steps))
+sum(duplicated(hourly_steps))
+sum(duplicated(Intensities))
+sum(duplicated(Sleep))
+```
+
+
+Sleep returned 3 duplicate lines so I used distinct to remove them
+
+```{r}
+Sleep <- Sleep %>% distinct()
+```
+
+
+For accuracy, I cleaned the remaining data by dropping missing values from the tables
+
+```{r}
+Activity <- Activity %>% drop_na()
+Sleep <- Sleep %>% drop_na()
+daily_steps <- daily_steps %>% drop_na()
+Calories <- Calories %>% drop_na()
+Intensities <- Intensities %>% drop_na()
+hourly_steps <- hourly_steps %>% drop_na()
+```
+
+
+And finally for consistency, I cleaned the columns names so they would match when analyzing.
+
+```{r}
+Activity <- clean_names(Activity)
+Calories <- clean_names(Calories)
+Intensities <- clean_names(Intensities)
+daily_steps <- clean_names(daily_steps)
+hourly_steps <- clean_names(hourly_steps)
+Sleep <- clean_names(Sleep)
+```
+
+
+
+
+
+## ANALYZE and SHARE Phase
+
+
+I decided to start by analyzing the Sleep data to see how much time in spent in bed after waking up
+
+```{r}
+#first looked at a summary of the table
+Sleep %>% select(total_minutes_asleep,total_time_in_bed) %>% summary()
+#created a new column of time awake to determine the time in bed after waking up
+Sleep$time_awake <- (Sleep$total_time_in_bed - Sleep$total_minutes_asleep)
+#checked the summary to see overall data
+Sleep %>% select(total_minutes_asleep,total_time_in_bed,time_awake) %>% summary()
+```
+
+- Users were spending an average of 39 minutes in bed awake
+
+Now looking at Activity data, there was still some cleaning to do. 
+
+```{r}
+#summary of Activity
+summary(Activity)
+#Viewing each piece of data for the first 6 lines to determine which data to zero in on
+head(as.data.frame(Activity))
+```
+
+
+The columns logged_activities_distance and sedentary_active_distance do not provide information that will impact the analysis so they will get removed. Also, the column activity_date is renamed as date. 
+
+```{r}
+#removing columns
+Activity <- Activity[-c(6,10)]
+#adding a day of the week column and total active minutes
+Activity$activity_date <- mdy(Activity$activity_date)
+Activity$dow <- weekdays.Date(Activity$activity_date)
+Activity$total_active_minutes <- (Activity$lightly_active_minutes+Activity$fairly_active_minutes+Activity$very_active_minutes)
+```
+
+
+Now to load some summaries of Activity.
+
+```{r}
+Activity %>% select(total_steps,total_distance,calories) %>% summary()
+Activity %>% select(sedentary_minutes,lightly_active_minutes,fairly_active_minutes,very_active_minutes) %>% summary()
+```
+
+
+- On average, less than 30 minutes of fairly and very active minutes per day
+- Median active minutes of Fairly and Very are low, 6 and 4 minutes respectively showing there are a high number of days where users are recording 0 Fairly or Very active minutes. 
+
+Wanting to then look at overal activity per weekday, I created a new dataset with the average total active minutes by weekday. 
+
+```{r}
+#creating the dataset and plotting 
+avg_activity <- Activity %>% group_by(dow) %>% summarise(active_minutes=mean(total_active_minutes,na.rm = TRUE))
+ggplot(data = avg_activity,aes(x=factor(dow,levels=c("Sunday","Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),y=active_minutes))+geom_col()+labs(x="Day of the Week",y="Avg Total Active Minutes")
+```
+
+
+Users are less active on Sundays by active minutes.
+
+Curious about total steps rather than minutes per weekday, I made a new dataset and plotted that. 
+
+```{r}
+#new dataset to see average steps taken per day
+avg_step <- Activity %>% group_by(dow) %>% summarise(avg_steps = mean(total_steps,na.rm = TRUE))
+#viz of the dataset
+ggplot(data=avg_step,aes(x=factor(dow,levels=c("Sunday","Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),y=avg_steps))+geom_col()+labs(x="Day of the Week",y="Avg Total Steps")
+```
+
+
+Again we see that Sundays are least active as they have the least amount of steps total on average. 
+
+
+Having an idea of how active users are, I decided to plot active minutes and calories to see what the correlation is. I chose to continue to look at Fairly and Very active minutes together. 
+
+```{r}
+#create a data set focusing on Fairly and Very active minutes summed together
+fairly_very <- Activity %>% group_by(id) %>% summarise(active_minutes=sum(fairly_active_minutes,very_active_minutes),calories=sum(calories))
+
+#plot fairly/very active minutes and calories
+ggplot(data=fairly_very,aes(x=active_minutes,y=calories))+geom_point()+geom_smooth()
+
+#plot lightly active minutes and calories
+ggplot(data=Activity,aes(x=lightly_active_minutes,y=calories))+geom_point()+geom_smooth()
+
+#plot lightly active minutes and calories
+ggplot(data=Activity,aes(x=sedentary_minutes,y=calories))+geom_point()+geom_smooth()
+```
+
+
+- The more active the user is, the more calories burned, even just being lightly active
+
+Now to look at the trends between Activity and Sleep. First start with merging the datasets together.
+
+```{r}
+#create a new date column without time and match name"activity_date"
+Sleep$activity_date <- str_split(Sleep$sleep_day," ",simplify = T)[,1]
+Sleep$activity_date <- mdy(Sleep$activity_date)
+
+#new dataset to compare sleep time and calories 
+New <- Activity %>% merge(Sleep,by=c("id","activity_date"))
+```
+
+
+I want to see what the trend is for total_minutes_asleep and calories, similar to the previous plots. 
+
+```{r}
+#Plot time asleep vs calories
+ggplot(data = New,aes(x=total_minutes_asleep,y=calories))+geom_point()+geom_smooth()
+```
+
+
+- Users who get between 6.5 and 8 hours of sleep, have a higher chance of burning more calories. 
+
+However the data does seem to be very scattered so to see if this assumption is accurate, I plotted total_minutes_asleep and total_steps
+
+```{r}
+#Plot time asleep vs totalsteps
+ggplot(data = New,aes(x=total_minutes_asleep,y=total_steps))+geom_point()+geom_smooth()
+```
+
+
+We see a similar plot and trend to the previous one. It shows that users getting the recommended amount of sleep (at least 7 hours according to the CDC)
+
+```{r}
+#Plot total active minutes vs time asleep
+ggplot(data = New, aes(x=total_minutes_asleep,y=lightly_active_minutes+fairly_active_minutes+very_active_minutes))+geom_point()+geom_smooth()+labs(x="Total Minutes Asleep",y="Active Minutes per Day")
+```
+
+
+Further solidifies the idea that users getting the recommend amount of sleep tend to be more active and burn more calories. These users are the highest target to improve their daily active minutes. 
+
+Discoveries and conclusions:
+
+- Users were spending an average of 39 minutes in bed awake
+- Overall users generally lack active minutes, especially Fairly and Very active minutes per day on average
+- The more active the user is, the more calories burned, even just being lightly active
+- Users who get the recommended amount of sleep (at least 7 hours according to the CDC <https://www.cdc.gov/sleep/data-research/facts-stats/adults-sleep-facts-and-stats.html>), have a higher chance of being more active and burning more calories 
+- Users are less active on Sundays by active minutes and steps
+
+**ACT Phase**
+
+With these insights, we hope to solve the stated business task of analyzing how customers use devices to provide insights for Bellabeat’s marketing strategy. The aim of Bellabeat is to empower women with knowledge about their own health and habits. The focus can be around healthy sleeping habits for women who want to be more active. 
+
+Recommendations focusing on utilizing the Bellabeat App:
+
+- Have wake up alarms and “get up” reminders for users to get out of bed and start their day. This can pair also with reminders to be active throughout the day with different levels of activity depending on the users preferences. 
+
+- Since there is a correlation with sleep and activity, helping users sleep by promoting meditation flows on the app before bed can help as there is positive correlation between meditation and sleep (<https://pmc.ncbi.nlm.nih.gov/articles/PMC6557693/>). 
+
+- Since users tend to be less active on Sunday there are 2 ways we can approach users:
+	- promote more activity on Sundays by encouraging users to do exercises or promote outdoor activities. 
+	- promote rest day by offering meditation and light activity indoors. Can also have include more wellness options based on the users lifestyle and goals. 
+
